@@ -1,18 +1,6 @@
 ---
 title: "Lab Week Fun"
 date: "`r Sys.Date()`"
-output:
-  pdf_document: default
-  classoption: landscape
-header-includes:
-- \usepackage{titling}
-- \usepackage{wrapfig}
-- \usepackage{lipsum}
-- \usepackage{pdflscape}
-- \pretitle{\begin{center} \includegraphics[width=2in,height=2in]{1200px-MassDPH_svg.png}\LARGE\\}
-- \posttitle{\end{center}}
-- \newcommand{\blandscape}{\begin{landscape}}
-- \newcommand{\elandscape}{\end{landscape}}
 ---
 
 ```{r setup, include=FALSE}
