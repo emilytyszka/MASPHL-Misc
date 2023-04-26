@@ -1,0 +1,260 @@
+---
+title: "Lab Week Fun"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  classoption: landscape
+header-includes:
+- \usepackage{titling}
+- \usepackage{wrapfig}
+- \usepackage{lipsum}
+- \usepackage{pdflscape}
+- \pretitle{\begin{center} \includegraphics[width=2in,height=2in]{1200px-MassDPH_svg.png}\LARGE\\}
+- \posttitle{\end{center}}
+- \newcommand{\blandscape}{\begin{landscape}}
+- \newcommand{\elandscape}{\end{landscape}}
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+#Load in Libraries
+library(readxl)
+library(plyr)
+library(dplyr)
+library(arsenal)
+library(ggplot2)
+library(writexl)
+library(openxlsx)
+library(lubridate) 
+library(data.table)
+library(kableExtra)
+library(knitr)
+library(tidyr)
+library(janitor)
+library(scales)
+library(kableExtra)
+library(tinytex)
+library(yaml)
+library(ggpubr)
+library(cowplot)
+library(zoo)
+library(formattable)
+library(treemap)
+library(viridis)
+library(paletteer)
+library(rlist)
+library(magrittr)
+library(mosaic)
+library(tidyverse)
+
+```
+
+```{r, include = F}
+
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_knit$set(root.dir= normalizePath('..'))
+knitr::opts_chunk$set(error = FALSE)
+
+defOut <- knitr::knit_hooks$get("plot")  # save the default plot hook 
+knitr::knit_hooks$set(plot = function(x, options) {  # set new plot hook ...
+  x <- defOut(x, options)  # first apply the default hook
+  if(!is.null(options$wrapfigure)) {  # then, if option wrapfigure is given ...
+    # create the new opening string for the wrapfigure environment ...
+    wf <- sprintf("\\begin{wrapfigure}{%s}{%g\\textwidth}", options$wrapfigure[[1]], options$wrapfigure[[2]])
+    x  <- gsub("\\begin{figure}", wf, x, fixed = T)  # and replace the default one with it.
+    x  <- gsub("{figure}", "{wrapfigure}", x, fixed = T)  # also replace the environment ending
+  }
+  return(x)
+})
+```
+
+```{r coffee shops, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+
+Coffee <-read_excel("Lab Week - Coffee Shops.xlsx") 
+
+Coffee <- Coffee %>% mutate(`Favorite Café` =
+  fct_collapse(`What is your go-to coffee shop/café?`,
+               "Dunkin'" = c("Dunkin'", "Dunks NOT Dunkin"),
+               "McD, Honey Dew"="McD, Honey Dew", 
+               "Tatte" = "Tatte", 
+               "Peet's"= "Peet's", 
+               "Cafe Nero" ="Cafe Nero",
+               "Starbucks"="Starbucks"))
+
+Coffee$Division <- Coffee$`What is your division?`
+CoffeeTable1<-as.data.frame(table(Coffee$Division, Coffee$`Favorite Café`))
+CoffeeTable<-reshape(CoffeeTable1, timevar = 'Var2', idvar = 'Var1', direction = 'wide') #reshape
+names(CoffeeTable)[1]<-"Division"
+
+CoffeeTable2<-CoffeeTable
+CoffeeTable <- CoffeeTable %>% 
+  adorn_totals(c("row", "col"))
+
+
+names(CoffeeTable1)[1]<-"Division"
+names(CoffeeTable1)[2]<-"Favorite Café"
+names(CoffeeTable1)[3]<-"Count"
+
+view(CoffeeTable)
+
+
+#Graph
+label_df = Coffee %>% group_by(`Favorite Café`) %>% summarise(n=n())
+#Create some vars
+label_df$score<-NA
+
+ggplot(CoffeeTable1, aes(fill=Division, y=Count, x=`Favorite Café`)) + 
+    geom_bar(position="stack", color="black", stat="identity") + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, vjust=1, hjust=1)) + scale_fill_brewer(palette="BrBG") +
+  scale_y_continuous(name="Count", breaks=seq(0, 16, 2)) + labs(title= "BIDLS Runs on Dunkin' (and Starbucks)", subtitle="Two Clear Favorite Coffeeshops Among State Lab Staff")
+
+ggsave("CoffeeShops.png", width = 9, height = 7, units = "in")
+
+```
+
+```{r coffee shops 2, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+  
+CoffeeTable2<- CoffeeTable2 %>% 
+  rename_with(str_sub, start = 6L, .cols = starts_with("Freq."))
+CoffeeTable2$Favorite <- colnames(CoffeeTable2)[apply(CoffeeTable2,1,which.max)]
+Favorites <- CoffeeTable2 %>% select(Division, Favorite)
+
+
+kbl(Favorites, booktabs = T) %>% kable_styling(full_width = F) %>%
+  kable_styling(font_size = 16)%>%
+  kable_styling(latex_options = "HOLD_position")
+
+```
+
+```{r handedness, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+
+Handedness <-read_excel("Lab Week - Handedness.xlsx") 
+names(Handedness)[2]<-"Division"
+names(Handedness)[3]<-"Writing Hand"
+names(Handedness)[4]<-"Pipetting Hand"
+
+HandednessTable <- as.data.frame(table(Handedness$`Writing Hand`,Handedness$`Pipetting Hand`))
+HandednessTable<-reshape(HandednessTable, timevar = 'Var2', idvar = 'Var1', direction = 'wide') #reshape
+HandednessTable<- HandednessTable %>% 
+  rename_with(str_sub, start = 6L, .cols = starts_with("Freq."))
+HandednessTable2 <- HandednessTable[,-1]
+rownames(HandednessTable2) <- HandednessTable[,1]
+
+names(HandednessTable2)[2]<-"Pipette Left"
+names(HandednessTable2)[3]<-"Pipette Right"
+row.names(HandednessTable2)[row.names(HandednessTable2) == "Left"] <- "Write Left"
+row.names(HandednessTable2)[row.names(HandednessTable2) == "Right"] <- "Write Right"
+
+knitr::kable(HandednessTable2, caption = "Pipetting vs Writing Hands for BIDLS Staff") %>%
+  row_spec(0, angle = 0)%>%
+  kable_styling()
+
+
+HandednessTable3 <- as.data.frame(table(Handedness$`Writing Hand`))
+names(HandednessTable3)[2]<-"n"
+names(HandednessTable3)[1]<-"Writing Hand"
+HandednessTable3 <- HandednessTable3 %>%  
+  mutate(perc = `n` / sum(`n`)) %>% 
+  arrange(perc) %>%
+  mutate(labels = scales::percent(perc))
+library(paletteer)
+ggplot(HandednessTable3, aes(x = "", y = perc, fill = `Writing Hand`)) +
+  geom_col() +  geom_label(aes(label = labels),
+             position = position_stack(vjust = 0.5),
+             show.legend = FALSE) + theme_bw()+ scale_fill_brewer(palette = "BuPu") + 
+  coord_polar(theta = "y") + labs(title= "8% of BIDLS staff respondents reported being left handed")
+ggsave("Handedness.png", width = 9, height = 7, units = "in")
+
+HandednessTable4 <- as.data.frame(table(Handedness$`Pipetting Hand`))
+names(HandednessTable4)[2]<-"n"
+names(HandednessTable4)[1]<-"Pipetting Hand"
+HandednessTable4 <- HandednessTable4 %>%  
+  mutate(perc = `n` / sum(`n`)) %>% 
+  arrange(perc) %>%
+  mutate(labels = scales::percent(perc))
+ggplot(HandednessTable4, aes(x = "", y = perc, fill = `Pipetting Hand`)) +
+  geom_col() +  geom_label(aes(label = labels),
+             position = position_stack(vjust = 0.5),
+             show.legend = FALSE, label.size = 0.1) + theme_bw()+ scale_fill_brewer(palette = "BuPu") + 
+  coord_polar(theta = "y") + labs(title= "...but only 2.6% pipette left-handed!")
+ggsave("Handedness2.png", width = 9, height = 7, units = "in")
+
+
+```
+
+
+```{r work format, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+
+WorkFormat <-read_excel("Lab Week - WorkFormat.xlsx") 
+names(WorkFormat)[2]<-"Division"
+names(WorkFormat)[3]<-"Work Format"
+
+library(wesanderson)
+
+WorkFormatTable <- as.data.frame(table(WorkFormat$`Work Format`))
+names(WorkFormatTable)[2]<-"n"
+names(WorkFormatTable)[1]<-"Work Format"
+WorkFormatTable <- WorkFormatTable %>%  
+  mutate(perc = `n` / sum(`n`)) %>% 
+  arrange(perc) %>%
+  mutate(labels = scales::percent(perc))
+library(paletteer)
+ggplot(WorkFormatTable, aes(x = "", y = perc, fill = `Work Format`)) +
+  geom_col() +  geom_label(aes(label = labels),
+             position = position_stack(vjust = 0.5),
+             show.legend = FALSE) + theme_bw()+ scale_fill_manual(values=wes_palette("GrandBudapest1"))+
+  coord_polar(theta = "y") + labs(title= "14% of respondents work hybrid, while 86% are in-person every day!")
+ggsave("WorkFormat.png", width = 9, height = 7, units = "in")
+
+
+```
+
+```{r ppe, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+
+PPE <-read_excel("Lab Week - PPE.xlsx") 
+names(PPE)[2]<-"Division"
+names(PPE)[3]<-"Most Stylish PPE"
+
+PPETable <- as.data.frame(table(PPE$`Most Stylish PPE`))
+names(PPETable)[2]<-"Count"
+names(PPETable)[1]<-"Most Stylish PPE"
+PPETable <- PPETable %>%  
+  mutate(perc = `Count` / sum(`Count`)) %>% 
+  arrange(perc) %>%
+  mutate(labels = scales::percent(perc))
+ggplot(PPETable, aes(x = "", y = perc, fill = `Most Stylish PPE`)) +
+  geom_col() + geom_col(width = 1, color = 1) + geom_label(aes(x=1.3, label = labels),
+             position = position_stack(vjust = 0.5),
+             show.legend = FALSE) + theme_bw()+ 
+  coord_polar(theta = "y") + labs(title= "Lab coats emerge as 2023's most stylish PPE")
+
+
+ggplot(PPETable, aes(y=Count, x=`Most Stylish PPE`, fill=`Most Stylish PPE`)) + 
+    geom_bar(position="stack", color="black", stat="identity") + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, vjust=1, hjust=1)) + 
+  scale_y_continuous(name="Count", breaks=seq(0, 7, 2)) + labs(title= "Working In Style: Lab Coats Voted Most Stylish PPE by BIDLS Staff", subtitle="Goggles Ranked 2nd in 2023 PPE Style-off")
+ggsave("PPE.png", width = 9, height = 7, units = "in")
+
+
+PPETable1<-as.data.frame(table(PPE$Division, PPE$`Most Stylish PPE`))
+PPETable1<-reshape(PPETable1, timevar = 'Var2', idvar = 'Var1', direction = 'wide') #reshape
+names(PPETable1)[1]<-"Division"
+names(PPETable1)[2]<-"Most Stylish PPE"
+names(PPETable1)[3]<-"Count"
+PPETable1<- PPETable1 %>% 
+  rename_with(str_sub, start = 6L, .cols = starts_with("Freq."))
+PPETable1$Favorite <- colnames(PPETable1)[apply(PPETable1,1,which.max)]
+Favorites <- PPETable1 %>% select(Division, Favorite)
+
+
+kbl(Favorites, booktabs = T) %>% kable_styling(full_width = F) %>%
+  kable_styling(font_size = 16)%>%
+  kable_styling(latex_options = "HOLD_position")
+
+```
