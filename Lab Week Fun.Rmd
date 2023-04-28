@@ -1,12 +1,24 @@
 ---
 title: "Lab Week Fun"
 date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  classoption: landscape
+header-includes:
+- \usepackage{titling}
+- \usepackage{wrapfig}
+- \usepackage{lipsum}
+- \usepackage{pdflscape}
+- \pretitle{\begin{center} \includegraphics[width=2in,height=2in]{1200px-MassDPH_svg.png}\LARGE\\}
+- \posttitle{\end{center}}
+- \newcommand{\blandscape}{\begin{landscape}}
+- \newcommand{\elandscape}{\end{landscape}}
 ---
 
 ```{r setup, include=FALSE}
 
 knitr::opts_chunk$set(echo = TRUE)
-
+library(rlang)
 #Load in Libraries
 library(readxl)
 library(plyr)
@@ -226,7 +238,7 @@ ggplot(PPETable, aes(x = "", y = perc, fill = `Most Stylish PPE`)) +
 ggplot(PPETable, aes(y=Count, x=`Most Stylish PPE`, fill=`Most Stylish PPE`)) + 
     geom_bar(position="stack", color="black", stat="identity") + theme_bw() + 
   theme(axis.text.x = element_text(angle = 45, vjust=1, hjust=1)) + 
-  scale_y_continuous(name="Count", breaks=seq(0, 7, 2)) + labs(title= "Working In Style: Lab Coats Voted Most Stylish PPE by BIDLS Staff", subtitle="Goggles Ranked 2nd in 2023 PPE Style-off")
+  scale_y_continuous(name="Count", breaks=seq(0, 9, 2)) + labs(title= "Working In Style: Lab Coats Voted Most Stylish PPE by BIDLS Staff", subtitle="Goggles Ranked 2nd in 2023 PPE Style-off")
 ggsave("PPE.png", width = 9, height = 7, units = "in")
 
 
@@ -244,5 +256,167 @@ Favorites <- PPETable1 %>% select(Division, Favorite)
 kbl(Favorites, booktabs = T) %>% kable_styling(full_width = F) %>%
   kable_styling(font_size = 16)%>%
   kable_styling(latex_options = "HOLD_position")
+
+```
+
+```{r pizza, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+library(grid)
+library(emoGG)
+pizza <-read_excel("Lab Week - Pizza.xlsx") 
+
+pizza<-pizza %>% group_by(`If offered unlimited free pizza, how many slices would you eat?`) %>% mutate(Count = seq_along(`If offered unlimited free pizza, how many slices would you eat?`))
+summary(pizza$`old counts`)
+find_mode <- function(x) {
+  u <- unique(x)
+  tab <- tabulate(match(x, u))
+  u[tab == max(tab)]
+}
+
+
+Label <- paste0('Mean slices =', mean(pizza$`old counts`))
+
+# Plot 
+ggplot(pizza, aes(x=`If offered unlimited free pizza, how many slices would you eat?`, y= Count)) +
+  geom_emoji(emoji = "1f355") + theme_bw() + scale_x_continuous(breaks=seq(0, 20, 2)) + scale_y_continuous(breaks=seq(0, 8, 2)) + 
+  labs(title= "Average BIDLS Staff Member Would Consume 4 Slices of Pizza, Given the Chance", subtitle="One Respondent Answered That They Would Eat 20 Slices") + geom_vline(xintercept = mean(pizza$`old counts`), linetype="dashed", colour = "black", size=1) + annotate(geom="text", x=6.75, y=7, label=Label,
+              color="black")
+ggsave("Pizza.png", width = 9, height = 7, units = "in")
+
+#Mean by division
+Appetites <- aggregate(pizza$`If offered unlimited free pizza, how many slices would you eat?`, list(pizza$`What is your division?`), FUN=mean) 
+names(Appetites)[1]<-"Division"
+names(Appetites)[2]<-"Mean Pizza Slices"
+kbl(Appetites, booktabs = T) %>% kable_styling(full_width = F) %>%
+  kable_styling(font_size = 16)%>%
+  kable_styling(latex_options = "HOLD_position")
+```
+```{r time at dph, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+timeatdph <-read_excel("Lab Week - Time at DPH.xlsx") 
+mean(timeatdph$`How many years have you worked at DPH?`)
+timeatdph$`How many years have you worked at DPH?` <- round(timeatdph$`How many years have you worked at DPH?`, digits=0)
+ggplot(timeatdph, aes(x=`How many years have you worked at DPH?`)) + 
+    geom_histogram(binwidth=1, color = "grey", aes(fill=as.factor(`How many years have you worked at DPH?`))) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, vjust=1, hjust=1)) + theme(legend.position="none") + scale_fill_viridis_d(option="plasma")+
+  scale_x_continuous(name="Years at DPH", breaks=seq(0, 34, 2)) + labs(title= "BIDLS Staff: Long-time and New", subtitle="Staff Time at DPH Ranges From A Few Months to 32 Years!")
+ggsave("TimeAtDPH.png", width = 9, height = 7, units = "in")
+
+```
+
+```{r parking, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+parking <-read_excel("Lab Week - Parking.xlsx") 
+names(parking)[2]<-"Division"
+names(parking)[3]<-"Parking Style"
+
+parking <- parking %>% replace_na(list(`Division` = "[No division given]"))
+
+ParkingTable <- as.data.frame(table(parking$`Division`,parking$`Parking Style`))
+ParkingTable<-reshape(ParkingTable, timevar = 'Var2', idvar = 'Var1', direction = 'wide') #reshape
+ParkingTable<- ParkingTable %>% 
+  rename_with(str_sub, start = 6L, .cols = starts_with("Freq."))
+
+names(ParkingTable)[1]<-"Division"
+
+
+ParkingTable <- ParkingTable %>% adorn_totals()
+
+knitr::kable(ParkingTable, caption = "Parking Styles for BIDLS Staff") %>%
+  row_spec(0, angle = 0)%>%
+  kable_styling()
+
+
+```
+
+```{r pets, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+pets <-read_excel("Lab Week - Pets.xlsx") 
+names(pets)[2]<-"Division"
+names(pets)[13]<-"Crab, shrimp"
+
+pets2 <- melt(as.data.table(pets), id.vars=c("Division"))
+pets2 <- pets2 %>% replace_na(list(`value` = "0"))
+pets2 <- pets2 %>% filter(variable != "Timestamp" & variable != "Other pet(s) - please enter the type(s) and number(s)")
+
+
+
+names(pets2)[2] <- "Pet Type"
+pets3 <- data.frame(`Pet Type` = rep(pets2$`Pet Type`, pets2$value))
+
+pets3<-pets3 %>% group_by(`Pet.Type`) %>% mutate(`Count` = seq_along(`Pet.Type`))
+names(pets3)[1] <- "Pet Type"
+
+ggplot(pets3, aes(x = `Pet Type`, y = `Count`)) +
+  theme_bw() +
+  geom_emoji(data = pets3[pets3$`Pet Type` == "Cat", ], emoji = "1f431", size = 0.025) +
+  geom_emoji(data = pets3[pets3$`Pet Type` == "Dog", ], emoji = "1f436", size = 0.025) +
+  geom_emoji(data = pets3[pets3$`Pet Type` == "Fish", ], emoji = "1f41f", size = 0.025) +
+  geom_emoji(data = pets3[pets3$`Pet Type` == "Crab, shrimp", ], emoji = "1f980", size = 0.025) +
+  geom_emoji(data = pets3[pets3$`Pet Type` == "Lizard", ], emoji = "1f98e", size = 0.025) +
+  geom_emoji(data = pets3[pets3$`Pet Type` == "Tortoise", ], emoji = "1f422", size = 0.025) +
+  geom_emoji(data = pets3[pets3$`Pet Type` == "Chicken", ], emoji = "1f413", size = 0.025) +
+  geom_emoji(data = pets3[pets3$`Pet Type` == "Snail", ], emoji = "1f40c", size = 0.025) +
+  geom_emoji(data = pets3[pets3$`Pet Type` == "Frog", ], emoji = "1f438", size = 0.025) +
+  theme(axis.text.x = element_text(angle = 45, vjust=1, hjust=1)) + scale_y_continuous(name="Count", breaks=seq(0, 55, 2)) +
+  labs(title= "Animal-Loving Laboratorians: BIDLS Staff and Their Pets") +
+  theme(aspect.ratio=6/4)
+ggsave("Pets.png", width = 12, height = 8, units = "in")
+
+emoji_search("frog")
+
+PetsByDivision <- aggregate(as.numeric(pets2$value), by=list(Category=pets2$Division), FUN=sum)
+pets4 <- pets2 %>% filter(value != 0, value != "0.0", value != "00")
+PetsByDivisionMean <- aggregate(as.numeric(pets4$value), by=list(Category=pets4$Division), FUN=mean)
+view(PetsByDivisionMean)
+
+names(PetsByDivision)[1]<-"Division"
+names(PetsByDivision)[2]<-"Total Pets"
+names(PetsByDivisionMean)[1]<-"Division"
+names(PetsByDivisionMean)[2]<-"Mean Pets per Person"
+
+PetsByDivisionTotal <- left_join(PetsByDivision, PetsByDivisionMean, by = join_by(Division == Division))
+
+knitr::kable(PetsByDivisionTotal, caption = "Pets By Division for BIDLS Staff") %>%
+  row_spec(0, angle = 0)%>%
+  kable_styling()
+
+```
+
+```{r commute, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+commute <-read_excel("Lab Week - Commute.xlsx") 
+
+names(commute)[2]<-"Division"
+names(commute)[3]<-"Commuting Method"
+names(commute)[4]<-"Commute Length (min)"
+mean(commute$`Commute Length (min)`)
+
+ggplot(commute, aes(x=`Commuting Method`, y=`Commute Length (min)`, fill = `Commuting Method`)) + 
+  geom_boxplot(outlier.colour="red", outlier.shape=8,
+                outlier.size=3, notch=FALSE) + theme_bw() + labs(title= "BIDLS on the Move: Length and Method of Staff Commutes")
+ggsave("CommuteBoxplot.png", width = 9, height = 7, units = "in")
+
+CommuteDivision <- aggregate(as.numeric(commute$`Commute Length (min)`), by=list(Category=commute$Division), FUN=mean)
+CommuteMethod <- aggregate(as.numeric(commute$`Commute Length (min)`), by=list(Category=commute$`Commuting Method`), FUN=mean)
+names(CommuteMethod)[1]<-"Division"
+names(CommuteMethod)[2]<-"Mean Commute Time"
+names(CommuteDivision)[1]<-"Division"
+names(CommuteDivision)[2]<-"Mean Commute Time"
+
+ggplot(commute, aes(x=`Commute Length (min)`)) + 
+    geom_histogram(binwidth=5, color = "grey", aes(fill=as.factor(`Commute Length (min)`))) + theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, vjust=1, hjust=1)) + theme(legend.position="none") + scale_fill_viridis_d(option="viridis")+
+  scale_x_continuous(name="Commute in Minutes", breaks=seq(0, 210, 20)) + labs(title= "BIDLS on the Move: Distribution of Lengths of Staff Commutes", subtitle="Travel Times Range from 1 minute to 200")
+ggsave("CommuteHistogram.png", width = 9, height = 7, units = "in")
+
+knitr::kable(CommuteMethod, caption = "Commute Times by Method") %>%
+  row_spec(0, angle = 0)%>%
+  kable_styling()
+
+
+knitr::kable(CommuteDivision, caption = "Commute Times by Division") %>%
+  row_spec(0, angle = 0)%>%
+  kable_styling()
 
 ```
