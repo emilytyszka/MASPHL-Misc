@@ -1,0 +1,173 @@
+---
+title: "Lab Week 2023 Feedback"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  classoption: landscape
+header-includes:
+- \usepackage{titling}
+- \usepackage{wrapfig}
+- \usepackage{lipsum}
+- \usepackage{pdflscape}
+- \pretitle{\begin{center} \includegraphics[width=2in,height=2in]{1200px-MassDPH_svg.png}\LARGE\\}
+- \posttitle{\end{center}}
+- \newcommand{\blandscape}{\begin{landscape}}
+- \newcommand{\elandscape}{\end{landscape}}
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(rlang)
+#Load in Libraries
+library(readxl)
+library(plyr)
+library(dplyr)
+library(arsenal)
+library(ggplot2)
+library(writexl)
+library(openxlsx)
+library(lubridate) 
+library(data.table)
+library(kableExtra)
+library(knitr)
+library(tidyr)
+library(janitor)
+library(scales)
+library(kableExtra)
+library(tinytex)
+library(yaml)
+library(ggpubr)
+library(cowplot)
+library(zoo)
+library(formattable)
+library(treemap)
+library(viridis)
+library(paletteer)
+library(rlist)
+library(magrittr)
+library(mosaic)
+library(tidyverse)
+
+```
+
+```{r, include = F}
+
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_knit$set(root.dir= normalizePath('..'))
+knitr::opts_chunk$set(error = FALSE)
+
+defOut <- knitr::knit_hooks$get("plot")  # save the default plot hook 
+knitr::knit_hooks$set(plot = function(x, options) {  # set new plot hook ...
+  x <- defOut(x, options)  # first apply the default hook
+  if(!is.null(options$wrapfigure)) {  # then, if option wrapfigure is given ...
+    # create the new opening string for the wrapfigure environment ...
+    wf <- sprintf("\\begin{wrapfigure}{%s}{%g\\textwidth}", options$wrapfigure[[1]], options$wrapfigure[[2]])
+    x  <- gsub("\\begin{figure}", wf, x, fixed = T)  # and replace the default one with it.
+    x  <- gsub("{figure}", "{wrapfigure}", x, fixed = T)  # also replace the environment ending
+  }
+  return(x)
+})
+```
+
+```{r data, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+feedback <-read_excel("C:/Users/ETyszka/OneDrive - Commonwealth of Massachusetts/Desktop/Lab Week/Lab Week - Feedback.xlsx") 
+feedback <- rename(feedback, "Respondent" = `Respondent...1`)
+
+```
+The Lab Week feedback survey received `r nrow(feedback)` responses between `r min(as.Date(feedback$Timestamp))` and `r max(as.Date(feedback$Timestamp))`.
+
+# Summary of Activities
+
+As part of the feedback form, respondents were asked to rank each of the lab week activities on a scale of 1 to 5 `(1 star=Dissatisfied, 3 stars=Satisfied, 5 stars=Extremely Satisfied)`.
+
+```{r summaries, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+feedbacknum <- feedback %>% select(`Tuesday Muffin Breakfast`, `Wednesday Pizza Lunch`, `Thursday Cake and Cookies`, `Lab Appreciation Bingo`, `Lab Week Word Search`, 
+                                   `Newsletter Surveys`, `Posters in the Lobby`, `Lab Olympics Overall`)
+feedbacknum <- rename(feedbacknum, "Lab Olympics" = `Lab Olympics Overall`)
+
+feedbacknumlong <- gather(feedbacknum, Activity, Score, `Tuesday Muffin Breakfast`:`Lab Olympics`, factor_key=TRUE)
+feedbacknumlong$Activity <- as.factor(feedbacknumlong$Activity)
+feedbacknumsummary <- ddply(feedbacknumlong, "Activity", summarise,
+               Replies = sum(!is.na(Score)),
+               "Mean Score" = mean(Score, na.rm=TRUE),
+               "Min Score" = min(Score, na.rm=TRUE),
+               "Max Score" = max(Score, na.rm = TRUE)
+)
+
+feedbacknumsummary<- feedbacknumsummary %>% as.data.frame() %>% arrange(desc(`Mean Score`))
+kbl(feedbacknumsummary, booktabs = T) %>% kable_styling(full_width = F) %>%
+  kable_styling(font_size = 10)%>%
+  kable_styling(latex_options = "HOLD_position")
+
+```
+All activities for this year's lab week were highly rated, with all activities being rated over 4 stars and an overall average score of 4.40 stars. Of these, Lab Olympics, Lab Appreciation Bingo, and Newsletter Surveys were highest rated. Thursday's cake and cookies snack, at which the Lab Olympic awards were announced, was the favorite among the meals served.
+
+\pagebreak
+
+
+# A Closer Look at the Lab Olympics 
+
+The Lab Olympics event consisted of 5 events: Pipette Tip Longshot, Parafilm Stretching, Speed Gloving, Glove Flinging, and Pipette Tip Basketball. As with the other activities, respondents were asked to rank each of these on a scale of 1 to 5 `(1 star=Dissatisfied, 3 stars=Satisfied, 5 stars=Extremely Satisfied)`.
+
+Of the `r nrow(feedback)` respondents to the survey, only `r length(which(feedback$"Did you participate in Lab Olympics?"=="Yes"))` respondents answered "Yes." There were respondents to the survey reported not participating in the event, but still voted in the Lab Olympics feedback. *These respondents were likely spectators, so their responses were also included in the results.* 
+
+```{r summaries lab olympics, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+labolympics <- feedback %>% select(`Pipette Tip Longshot`, `Parafilm Stretching`, `Speed Gloving`, `Glove Flinging`, `Pipette Tip Basketball`)
+labolympicslong <- gather(labolympics, Activity, Score, `Pipette Tip Longshot`:`Pipette Tip Basketball`, factor_key=TRUE)
+labolympicslong$Activity <- as.factor(labolympicslong$Activity)
+labolympicssummary <- ddply(labolympicslong, "Activity", summarise,
+               Replies = sum(!is.na(Score)),
+               "Mean Score" = mean(Score, na.rm=TRUE),
+               "Min Score" = min(Score, na.rm=TRUE),
+               "Max Score" = max(Score, na.rm = TRUE)
+)
+
+labolympicssummary<- labolympicssummary %>% as.data.frame() %>% arrange(desc(`Mean Score`))
+kbl(labolympicssummary, booktabs = T) %>% kable_styling(full_width = F) %>%
+  kable_styling(font_size = 10)%>%
+  kable_styling(latex_options = "HOLD_position")
+
+
+```
+Parafilm stretching and speed gloving emerge in a tie as the favorite activities, both with a mean score of 4.69 stars. Pipette tip basketball is the least favorite of all with a rating of 3.54. Across all activities in the Lab Olympics, the mean rating was 4.38 stars. 
+
+# Lab Olympics Comments
+
+Regarding the Lab Olympics, respondents were asked: "Is there anything you would change about this event?"
+
+Here are their responses:
+
+```{r comments lab olympics, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+view(feedback)
+feedback2 <- feedback %>% drop_na(`Is there anything you would change about this event?`)
+for (i in 1:1) {
+  print(paste( "Respondent", feedback2$`Respondent`,":", feedback2$`Is there anything you would change about this event?`))
+  {
+      cat("\n")
+    }
+}
+
+```
+\pagebreak
+
+# Overall Lab Week Comments
+
+Finally, a general feedback section at the end of the form included a free space: "Feel free to enter any comments, suggestions, or concerns into the space below." 
+
+Here are the responses:
+
+```{r comments overall, echo=FALSE , warning=FALSE, message=FALSE, results = "asis", type = 'latex'}
+
+feedback3 <- feedback %>% drop_na(`Feel free to enter any comments, suggestions, or concerns into the space below.`)
+for (i in 1:1) {
+  print(paste( "Respondent", feedback3$Respondent, ":", feedback3$`Feel free to enter any comments, suggestions, or concerns into the space below.`)) 
+  {
+      cat("\n")
+  }
+}
+
+```
